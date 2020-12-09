@@ -1,5 +1,11 @@
 # Shazam Api
 
+### Install
+```
+pip3 install ShazamAPI
+```
+Also you need to install ffmpeg and ffprobe than add it to path
+
 ### Usage
 ```python
 from ShazamAPI import Shazam
