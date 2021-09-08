@@ -11,21 +11,66 @@ from .signature_format import DecodedMessage
 
 LANG = 'ru'
 TIME_ZONE = 'Europe/Moscow'
-API_URL = 'https://amp.shazam.com/discovery/v5/ru/RU/iphone/-/tag/%s/%s?sync=true&webv3=true&sampling=true&connected=&shazamapiversion=v3&sharehub=true&hubv5minorversion=v5.1&hidelb=true&video=v3'
-HEADERS = {
-    "X-Shazam-Platform": "IPHONE",
-    "X-Shazam-AppVersion": "14.1.0",
-    "Accept": "*/*",
-    "Accept-Language": LANG,
-    "Accept-Encoding": "gzip, deflate",
-    "User-Agent": "Shazam/3685 CFNetwork/1197 Darwin/20.0.0"
-}
+
+
+class Endpoint:
+    SCHEME = 'https'
+    HOSTNAME = 'amp.shazam.com'
+
+    def __init__(
+        self,
+        lang: str,
+        time_zone: str
+    ) -> None:
+        self.lang = lang
+        self.time_zone = time_zone
+
+    @property
+    def url(self) -> str:
+        return (
+            f'{self.SCHEME}://{self.HOSTNAME}'
+            '/discovery/v5'
+            f'/{self.lang}/{self.lang.upper()}'
+            '/iphone/-/tag/{uuid_a}/{uuid_b}'
+        )
+
+    @property
+    def params(self) -> dict:
+        return {
+            'sync': 'true',
+            'webv3': 'true',
+            'sampling': 'true',
+            'connected': '',
+            'shazamapiversion': 'v3',
+            'sharehub': 'true',
+            'hubv5minorversion': 'v5.1',
+            'hidelb': 'true',
+            'video': 'v3'
+        }
+
+    @property
+    def headers(self) -> dict:
+        return {
+            "X-Shazam-Platform": "IPHONE",
+            "X-Shazam-AppVersion": "14.1.0",
+            "Accept": "*/*",
+            "Accept-Language": self.lang,
+            "Accept-Encoding": "gzip, deflate",
+            "User-Agent": "Shazam/3685 CFNetwork/1197 Darwin/20.0.0"
+        }
 
 
 class Shazam:
-    def __init__(self, songData: bytes):
+    MAX_TIME_SECONDS = 8
+
+    def __init__(
+        self,
+        songData: bytes,
+        lang: str = LANG,
+        time_zone: str = TIME_ZONE
+    ):
         self.songData = songData
-        self.MAX_TIME_SECONDS = 8
+        self._endpoint = Endpoint(lang, time_zone)
 
     def recognizeSong(self) -> dict:
         self.audio = self.normalizateAudioData(self.songData)
@@ -43,7 +88,7 @@ class Shazam:
     
     def sendRecognizeRequest(self, sig: DecodedMessage) -> dict:
         data = {
-            'timezone': TIME_ZONE,
+            'timezone': self._endpoint.time_zone,
             'signature': {
                 'uri': sig.encode_to_uri(),
                 'samplems':int(sig.number_samples / sig.sample_rate_hz * 1000)
@@ -53,8 +98,12 @@ class Shazam:
             'geolocation': {}
                 }
         r = requests.post(
-            API_URL % (str(uuid.uuid4()).upper(), str(uuid.uuid4()).upper()), 
-            headers=HEADERS,
+            self._endpoint.url.format(
+                uuid_a=str(uuid.uuid4()).upper(),
+                uuid_b=str(uuid.uuid4()).upper()
+            ),
+            params=self._endpoint.params,
+            headers=self._endpoint.headers,
             json=data
         )
         return r.json()
