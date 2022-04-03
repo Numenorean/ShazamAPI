@@ -47,7 +47,7 @@ class Shazam(object):
         self,
         song_data: bytes,
     ) -> Generator[Tuple[float, dict], None, None]:
-        audio = self.normalizate_audio_data(song_data)
+        audio = self.normalize_audio_data(song_data)
         signature_generator = self.create_signature_generator(audio)
         while True:
             signature = signature_generator.get_next_signature()
@@ -61,7 +61,7 @@ class Shazam(object):
 
             yield current_offset, results
 
-    def normalizate_audio_data(self, song_data: bytes) -> AudioSegment:
+    def normalize_audio_data(self, song_data: bytes) -> AudioSegment:
         audio = AudioSegment.from_file(BytesIO(song_data))
         audio = audio.set_sample_width(NORMALIZED_SAMPLE_WIDTH)
         audio = audio.set_frame_rate(NORMALIZED_FRAME_RATE)
