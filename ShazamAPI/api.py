@@ -31,16 +31,15 @@ class Shazam:
         self.audio = self.normalizateAudioData(self.songData)
         signatureGenerator = self.createSignatureGenerator(self.audio)
         while True:
-        
             signature = signatureGenerator.get_next_signature()
             if not signature:
                 break
-            
+
             results = self.sendRecognizeRequest(signature)
             currentOffset = signatureGenerator.samples_processed / 16000
-            
+
             yield currentOffset, results
-    
+
     def sendRecognizeRequest(self, sig: DecodedMessage) -> dict:
         data = {
             'timezone': TIME_ZONE,
@@ -58,15 +57,15 @@ class Shazam:
             json=data
         )
         return r.json()
-    
+
     def normalizateAudioData(self, songData: bytes) -> AudioSegment:
         audio = AudioSegment.from_file(BytesIO(songData))
-    
+
         audio = audio.set_sample_width(2)
         audio = audio.set_frame_rate(16000)
         audio = audio.set_channels(1)
         return audio
-    
+
     def createSignatureGenerator(self, audio: AudioSegment) -> SignatureGenerator:
         signature_generator = SignatureGenerator()
         signature_generator.feed_input(audio.get_array_of_samples())
