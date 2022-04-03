@@ -12,7 +12,8 @@ from .signature_format import DecodedMessage
 
 LANG: Final = 'ru'
 REGION: Final = 'RU'
-TIME_ZONE: Final = 'Europe/Moscow'
+TIMEZONE: Final = 'Europe/Moscow'
+
 API_URL_TEMPLATE: Final = (
     'https://amp.shazam.com/discovery/v5'
     + '/{lang}/{region}/iphone/-/tag/{uuid_a}/{uuid_b}'
@@ -35,6 +36,7 @@ PARAMS: Final = types.MappingProxyType({
     'hidelb': 'true',
     'video': 'v3',
 })
+
 NORMALIZED_SAMPLE_WIDTH: Final = 2
 NORMALIZED_FRAME_RATE: Final = 16000
 NORMALIZED_CHANNELS: Final = 1
@@ -42,6 +44,16 @@ NORMALIZED_CHANNELS: Final = 1
 
 class Shazam(object):
     max_time_seconds = 8
+
+    def __init__(
+        self,
+        lang: str = LANG,
+        region: str = REGION,
+        timezone: str = TIMEZONE
+    ):
+        self.lang = lang
+        self.region = region
+        self.timezone = timezone
 
     def recognize_song(
         self, audio: Union[bytes, BinaryIO, AudioSegment],
@@ -93,7 +105,7 @@ class Shazam(object):
 
     def send_recognize_request(self, sig: DecodedMessage) -> dict:
         data = {
-            'timezone': TIME_ZONE,
+            'timezone': self.timezone,
             'signature': {
                 'uri': sig.encode_to_uri(),
                 'samplems': int(
@@ -106,15 +118,15 @@ class Shazam(object):
         }
         resp = requests.post(
             API_URL_TEMPLATE.format(
-                lang=LANG,
-                region=REGION,
+                lang=self.lang,
+                region=self.region,
                 uuid_a=str(uuid.uuid4()).upper(),
                 uuid_b=str(uuid.uuid4()).upper(),
             ),
             params=PARAMS,
             headers={
                 **BASE_HEADERS,
-                'Accept-Language': LANG,
+                'Accept-Language': self.lang,
             },
             json=data,
         )
