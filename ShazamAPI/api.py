@@ -50,8 +50,8 @@ class Shazam(object):
         signature_generator = self.create_signature_generator(audio)
         for signature in signature_generator:
             results = self.send_recognize_request(signature)
-            current_offset = (
-                signature_generator.samples_processed / NORMALIZED_FRAME_RATE
+            current_offset = int(
+                signature_generator.samples_processed // NORMALIZED_FRAME_RATE,
             )
 
             yield current_offset, results
