@@ -1,0 +1,59 @@
+[tool.flakeheaven]
+format = "wemake"
+show_source = true
+statistics = false
+doctests = true
+exclude = [".venv"]
+baseline = ".flakeheaven-baseline"
+
+accept_encodings = "utf-8"
+max_complexity = 6
+max_line_length = 80
+
+[tool.flakeheaven.plugins]
+"flake8-bandit" = ["+*"]
+"flake8-broken-line" = ["+*"]
+"flake8-bugbear" = ["+*"]
+"flake8-commas" = ["+*"]
+"flake8-comprehensions" = ["+*"]
+# "flake8-darglint" = ["+*"]    # Potentially useful
+"flake8-debugger" = ["+*"]
+# "flake8-docstrings" = ["+*"]  # Potentially useful
+# "flake8-eradicate" = ["+*"]   # False positives
+"flake8-isort" = ["+*"]
+"flake8-quotes" = ["+*"]
+
+# We use Napoleon syntax (https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html)
+# which doesn't play well with https://github.com/peterjc/flake8-rst-docstrings:
+# "flake8-rst-docstrings" = ["+*"]
+
+"flake8-string-format" = ["+*"]
+mccabe = ["+*"]
+"pep8-naming" = ["+*"]
+pyflakes = ["+*"]
+
+pycodestyle = ["+*",
+    # Outdated rule (see https://www.flake8rules.com/rules/W503.html)
+    "-W503",    # Line break occurred before a binary operator
+]
+
+"wemake-python-styleguide" = [
+    "+*",
+
+    # These are purely subjective, the other ones will come with explanations:
+    "-WPS110",  # Found wrong variable name
+    "-WPS125",  # Found builtin shadowing (shadowing id is not a crime :-)
+    "-WPS300",  # Found local folder import
+    "-WPS332",  # Found walrus operator
+    "-WPS348",  # Found a line that starts with a dot
+    "-WPS430",  # Found nested function
+    "-WPS507",  # Found useless `len()` compare
+    "-WPS602",  # Found using `@staticmethod`
+
+    # Doesn't play well with f-strings:
+    "-WPS226",  # Found string constant over-use
+
+    # These two fail to detect new scope for control variables:
+    "-WPS440",  # Found block variables overlap
+    "-WPS441",  # Found control variable used after block
+]
