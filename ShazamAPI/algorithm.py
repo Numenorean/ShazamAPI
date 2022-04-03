@@ -100,7 +100,7 @@ class SignatureGenerator:
         self.next_signature.frequency_band_to_sound_peaks = {}
 
         self.ring_buffer_of_samples : RingBuffer[int] = RingBuffer(buffer_size = 2048, default_value = 0)
-        self.fft_outputs : RingBuffer[List[float]] = RingBuffer(buffer_size = 256, default_value = [0. * 1025])
+        self.fft_outputs : RingBuffer[List[float]] = RingBuffer(buffer_size=256, default_value=[0.] * 1025)
         self.spread_ffts_output : RingBuffer[List[float]] = RingBuffer(buffer_size = 256, default_value = [0] * 1025)
 
         return returned_signature
