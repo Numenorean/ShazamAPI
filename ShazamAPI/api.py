@@ -35,6 +35,9 @@ PARAMS: Final = types.MappingProxyType({
     'hidelb': 'true',
     'video': 'v3',
 })
+NORMALIZED_SAMPLE_WIDTH: Final = 2
+NORMALIZED_FRAME_RATE: Final = 16000
+NORMALIZED_CHANNELS: Final = 1
 
 
 class Shazam(object):
@@ -57,6 +60,28 @@ class Shazam(object):
             )
 
             yield current_offset, results
+
+    def normalizate_audio_data(self, song_data: bytes) -> AudioSegment:
+        audio = AudioSegment.from_file(BytesIO(song_data))
+        audio = audio.set_sample_width(NORMALIZED_SAMPLE_WIDTH)
+        audio = audio.set_frame_rate(NORMALIZED_FRAME_RATE)
+        audio = audio.set_channels(NORMALIZED_CHANNELS)
+        return audio  # noqa: WPS331
+
+    def create_signature_generator(
+        self, audio: AudioSegment,
+    ) -> SignatureGenerator:
+        signature_generator = SignatureGenerator()
+        signature_generator.feed_input(audio.get_array_of_samples())
+        signature_generator.MAX_TIME_SECONDS = self.max_time_seconds
+
+        # TODO: what 12, 3, 16, 6 mean here? :thinking:
+        if audio.duration_seconds > 12 * 3:
+            signature_generator.samples_processed += NORMALIZED_FRAME_RATE * (
+                int(audio.duration_seconds / 16) - 6
+            )
+
+        return signature_generator
 
     def send_recognize_request(self, sig: DecodedMessage) -> dict:
         data = {
@@ -86,22 +111,3 @@ class Shazam(object):
             json=data,
         )
         return resp.json()
-
-    def normalizate_audio_data(self, song_data: bytes) -> AudioSegment:
-        audio = AudioSegment.from_file(BytesIO(song_data))
-        audio = audio.set_sample_width(2)
-        audio = audio.set_frame_rate(16000)
-        audio = audio.set_channels(1)
-        return audio  # noqa: WPS331
-
-    def create_signature_generator(
-        self, audio: AudioSegment,
-    ) -> SignatureGenerator:
-        signature_generator = SignatureGenerator()
-        signature_generator.feed_input(audio.get_array_of_samples())
-        signature_generator.MAX_TIME_SECONDS = self.MAX_TIME_SECONDS
-        if audio.duration_seconds > 12 * 3:
-            signature_generator.samples_processed += 16000 * (
-                int(audio.duration_seconds / 16) - 6
-            )
-        return signature_generator
