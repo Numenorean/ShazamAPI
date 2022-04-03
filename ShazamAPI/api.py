@@ -1,9 +1,8 @@
-import json
 import time
 import types
 import uuid
 from io import BytesIO
-from typing import Final
+from typing import Final, Generator, Tuple
 
 import requests
 from pydub import AudioSegment
@@ -41,7 +40,7 @@ class Shazam(object):
         self.song_data = song_data
         self.MAX_TIME_SECONDS = 8
 
-    def recognize_song(self) -> dict:
+    def recognize_song(self) -> Generator[Tuple[float, dict], None, None]:
         self.audio = self.normalizate_audio_data(self.song_data)
         signature_generator = self.create_signature_generator(self.audio)
         while True:
