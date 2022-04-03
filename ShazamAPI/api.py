@@ -13,12 +13,14 @@ from .signature_format import DecodedMessage
 LANG: Final = 'ru'
 REGION: Final = 'RU'
 TIME_ZONE: Final = 'Europe/Moscow'
-API_URL_TEMPLATE: Final = 'https://amp.shazam.com/discovery/v5/{lang}/{region}/iphone/-/tag/{uuid_a}/{uuid_b}'
-HEADERS: Final = types.MappingProxyType({
+API_URL_TEMPLATE: Final = (
+    'https://amp.shazam.com/discovery/v5'
+    + '/{lang}/{region}/iphone/-/tag/{uuid_a}/{uuid_b}'
+)
+BASE_HEADERS: Final = types.MappingProxyType({
     'X-Shazam-Platform': 'IPHONE',
     'X-Shazam-AppVersion': '14.1.0',
     'Accept': '*/*',
-    'Accept-Language': LANG,
     'Accept-Encoding': 'gzip, deflate',
     'User-Agent': 'Shazam/3685 CFNetwork/1197 Darwin/20.0.0',
 })
@@ -72,7 +74,10 @@ class Shazam(object):
                 uuid_b=str(uuid.uuid4()).upper(),
             ),
             params=PARAMS,
-            headers=HEADERS,
+            headers={
+                **BASE_HEADERS,
+                'Accept-Language': LANG,
+            },
             json=data,
         )
         return resp.json()
