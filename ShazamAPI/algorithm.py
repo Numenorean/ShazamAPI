@@ -58,6 +58,16 @@ class SignatureGenerator(object):
         self.next_signature.number_samples = 0
         self.next_signature.frequency_band_to_sound_peaks = {}
 
+    def __next__(self) -> DecodedMessage:
+        sig = self.get_next_signature()
+        if sig is None:
+            raise StopIteration
+
+        return sig
+
+    def __iter__(self):
+        return self
+
     def feed_input(self, s16le_mono_samples: List[int]):
         """
         Add data to be generated a signature for, which will be processed when

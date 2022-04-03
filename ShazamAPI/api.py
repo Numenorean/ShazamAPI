@@ -47,10 +47,8 @@ class Shazam(object):
         self, audio: Union[bytes, BinaryIO, AudioSegment],
     ) -> Generator[Tuple[float, dict], None, None]:
         audio = self.normalize_audio_data(audio)
-        while True:
-            signature = signature_generator.get_next_signature()
-            if not signature:
-                break
+        signature_generator = self.create_signature_generator(audio)
+        for signature in signature_generator:
             results = self.send_recognize_request(signature)
             current_offset = (
                 signature_generator.samples_processed / NORMALIZED_FRAME_RATE
