@@ -83,7 +83,7 @@ class Shazam(object):
         audio = audio.set_sample_width(2)
         audio = audio.set_frame_rate(16000)
         audio = audio.set_channels(1)
-        return audio
+        return audio  # noqa: WPS331
 
     def create_signature_generator(
         self, audio: AudioSegment,
