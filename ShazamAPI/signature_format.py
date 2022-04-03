@@ -1,17 +1,15 @@
-#!/usr/bin/python3
-#-*- encoding: Utf-8 -*-
-from typing import Dict, List, Set, Sequence, Union, Any
+import ctypes
 from base64 import b64decode, b64encode
-from math import log, exp, sqrt
 from binascii import crc32
 from enum import IntEnum
 from io import BytesIO
-from ctypes import *
+from math import exp, log, sqrt
+from typing import Any, Dict, List, Sequence, Set, Union
 
 DATA_URI_PREFIX = 'data:audio/vnd.shazam.sig;base64,'
 
-class SampleRate(IntEnum): # Enum keys are sample rates in Hz
 
+class SampleRate(IntEnum):  # Enum keys are sample rates in Hz
     _8000 = 1
     _11025 = 2
     _16000 = 3
@@ -19,36 +17,57 @@ class SampleRate(IntEnum): # Enum keys are sample rates in Hz
     _44100 = 5
     _48000 = 6
 
-class FrequencyBand(IntEnum): # Enum keys are frequency ranges in Hz
-    _0_250 = -1 # Nothing above 250 Hz is actually stored
+
+class FrequencyBand(IntEnum):
+    # Enum keys are frequency ranges in Hz
+
+    _0_250 = -1  # Nothing above 250 Hz is actually stored
     _250_520 = 0
     _520_1450 = 1
     _1450_3500 = 2
-    _3500_5500 = 3 # This one (3.5 KHz - 5.5 KHz) should not be used in legacy mode
+    # This one (3.5 KHz - 5.5 KHz) should not be used in legacy mode:
+    _3500_5500 = 3
 
 
-class RawSignatureHeader(LittleEndianStructure):
+class RawSignatureHeader(ctypes.LittleEndianStructure):
     _pack = True
-    _fields_ = [
-        ('magic1', c_uint32), # Fixed 0xcafe2580 - 80 25 fe ca
-        ('crc32', c_uint32), # CRC-32 for all of the following (so excluding these first 8 bytes)
-        ('size_minus_header', c_uint32), # Total size of the message, minus the size of the current header (which is 48 bytes)
-        ('magic2', c_uint32), # Fixed 0x94119c00 - 00 9c 11 94
-        ('void1', c_uint32 * 3), # Void
-        ('shifted_sample_rate_id', c_uint32), # A member of SampleRate (usually 3 for 16000 Hz), left-shifted by 27 (usually giving 0x18000000 - 00 00 00 18)
-        ('void2', c_uint32 * 2), # Void, or maybe used only in "rolling window" mode?
-        ('number_samples_plus_divided_sample_rate', c_uint32), # int(number_of_samples + sample_rate * 0.24) - As the sample rate is known thanks to the field above, it can be inferred and substracted so that we obtain the number of samples, and from the number of samples and sample rate we can obtain the length of the recording
-        ('fixed_value', c_uint32) # Calculated as ((15 << 19) + 0x40000) - 0x7c0000 or 00 00 7c 00 - seems pretty constant, may be different in the "SigType.STREAMING" mode
+    _fields_ = [  # noqa: WPS120
+        # Fixed 0xcafe2580 - 80 25 fe ca:
+        ('magic1', ctypes.c_uint32),
+
+        # CRC-32 for all of the following (so excluding these first 8 bytes):
+        ('crc32', ctypes.c_uint32),
+
+        # Total size of the message, minus the size of the current header (which is 48 bytes):
+        ('size_minus_header', ctypes.c_uint32),
+
+        # Fixed 0x94119c00 - 00 9c 11 94:
+        ('magic2', ctypes.c_uint32),
+
+        # Void:
+        ('void1', ctypes.c_uint32 * 3),
+
+        # A member of SampleRate (usually 3 for 16000 Hz), left-shifted by 27 (usually giving 0x18000000 - 00 00 00 18):
+        ('shifted_sample_rate_id', ctypes.c_uint32),
+
+        # Void, or maybe used only in "rolling window" mode?:
+        ('void2', ctypes.c_uint32 * 2),
+
+        # int(number_of_samples + sample_rate * 0.24) - As the sample rate is known thanks to the field above, it can be inferred and substracted so that we obtain the number of samples, and from the number of samples and sample rate we can obtain the length of the recording:
+        ('number_samples_plus_divided_sample_rate', ctypes.c_uint32),
+
+        # Calculated as ((15 << 19) + 0x40000) - 0x7c0000 or 00 00 7c 00 - seems pretty constant, may be different in the "SigType.STREAMING" mode:
+        ('fixed_value', ctypes.c_uint32),
     ]
 
 
 class FrequencyPeak:
-    fft_pass_number : int = None
-    peak_magnitude : int = None
-    corrected_peak_frequency_bin : int = None
-    sample_rate_hz : int = None
+    fft_pass_number: int = None
+    peak_magnitude: int = None
+    corrected_peak_frequency_bin: int = None
+    sample_rate_hz: int = None
 
-    def __init__(self, fft_pass_number : int, peak_magnitude : int, corrected_peak_frequency_bin : int, sample_rate_hz : int):
+    def __init__(self, fft_pass_number: int, peak_magnitude: int, corrected_peak_frequency_bin: int, sample_rate_hz: int):
         self.fft_pass_number = fft_pass_number
         self.peak_magnitude = peak_magnitude
         self.corrected_peak_frequency_bin = corrected_peak_frequency_bin
@@ -60,7 +79,6 @@ class FrequencyPeak:
         # rate, 1024 useful bins and the multiplication by 64 made before
         # storing the information
 
-
     def get_amplitude_pcm(self) -> float:
         return sqrt(exp((self.peak_magnitude - 6144) / 1477.3) * (1 << 17) / 2) / 1024
         # ^ Not sure about this calculation but gives small enough numbers
@@ -71,15 +89,14 @@ class FrequencyPeak:
         # standard 16 KHz sample rate basis.
 
 
-
 class DecodedMessage:
-    sample_rate_hz : int = None
-    number_samples : int = None
+    sample_rate_hz: int = None
+    number_samples: int = None
 
-    frequency_band_to_sound_peaks : Dict[FrequencyBand, List[FrequencyPeak]] = None
+    frequency_band_to_sound_peaks: Dict[FrequencyBand, List[FrequencyPeak]] = None
 
     @classmethod
-    def decode_from_binary(cls, data : bytes):
+    def decode_from_binary(cls, data: bytes):
         self = cls()
 
         buf = BytesIO(data)
@@ -136,11 +153,11 @@ class DecodedMessage:
 
             while True:
 
-                raw_fft_pass : bytes = frequency_peaks_buf.read(1)
+                raw_fft_pass: bytes = frequency_peaks_buf.read(1)
                 if not raw_fft_pass:
                     break
 
-                fft_pass_offset : int = raw_fft_pass[0]
+                fft_pass_offset: int = raw_fft_pass[0]
                 if fft_pass_offset == 0xff:
                     fft_pass_number = int.from_bytes(frequency_peaks_buf.read(4), 'little')
                     continue
@@ -151,16 +168,13 @@ class DecodedMessage:
                 corrected_peak_frequency_bin = int.from_bytes(frequency_peaks_buf.read(2), 'little')
 
                 self.frequency_band_to_sound_peaks[frequency_band].append(
-                    FrequencyPeak(fft_pass_number, peak_magnitude, corrected_peak_frequency_bin, self.sample_rate_hz)
+                    FrequencyPeak(fft_pass_number, peak_magnitude, corrected_peak_frequency_bin, self.sample_rate_hz),
                 )
-
-
-
 
         return self
 
     @classmethod
-    def decode_from_uri(cls, uri : str):
+    def decode_from_uri(cls, uri: str):
 
         assert uri.startswith(DATA_URI_PREFIX)
 
@@ -185,12 +199,12 @@ class DecodedMessage:
                         "corrected_peak_frequency_bin": frequency_peak.corrected_peak_frequency_bin,
                         "_frequency_hz": frequency_peak.get_frequency_hz(),
                         "_amplitude_pcm": frequency_peak.get_amplitude_pcm(),
-                        "_seconds": frequency_peak.get_seconds()
+                        "_seconds": frequency_peak.get_seconds(),
                     }
                     for frequency_peak in frequency_peaks
                 ]
                 for frequency_band, frequency_peaks in sorted(self.frequency_band_to_sound_peaks.items())
-            }
+            },
         }
 
     def encode_to_binary(self) -> bytes:
@@ -232,19 +246,17 @@ class DecodedMessage:
 
                 fft_pass_number = frequency_peak.fft_pass_number
 
-
             contents_buf.write((0x60030040 + int(frequency_band)).to_bytes(4, 'little'))
             contents_buf.write(len(peaks_buf.getvalue()).to_bytes(4, 'little'))
             contents_buf.write(peaks_buf.getvalue())
             contents_buf.write(b'\x00' * (-len(peaks_buf.getvalue()) % 4))
-
 
         # Below, write the full message as a binary stream
 
         header.size_minus_header = len(contents_buf.getvalue()) + 8
 
         buf = BytesIO()
-        buf.write(bytes(header)) # We will rewrite it just after in order to include the final CRC-32
+        buf.write(bytes(header))  # We will rewrite it just after in order to include the final CRC-32
 
         buf.write((0x40000000).to_bytes(4, 'little'))
         buf.write((len(contents_buf.getvalue()) + 8).to_bytes(4, 'little'))
@@ -256,14 +268,8 @@ class DecodedMessage:
         buf.seek(0)
         buf.write(bytes(header))
 
-
         return buf.getvalue()
-
 
     def encode_to_uri(self) -> str:
 
         return DATA_URI_PREFIX + b64encode(self.encode_to_binary()).decode('ascii')
-
-
-
-
