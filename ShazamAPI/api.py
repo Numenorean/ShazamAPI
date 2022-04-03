@@ -2,7 +2,7 @@ import time
 import types
 import uuid
 from io import BytesIO
-from typing import Final, Generator, Tuple
+from typing import BinaryIO, Final, Generator, Tuple, Union
 
 import requests
 from pydub import AudioSegment
@@ -44,16 +44,13 @@ class Shazam(object):
     max_time_seconds = 8
 
     def recognize_song(
-        self,
-        song_data: bytes,
+        self, audio: Union[bytes, BinaryIO, AudioSegment],
     ) -> Generator[Tuple[float, dict], None, None]:
-        audio = self.normalize_audio_data(song_data)
-        signature_generator = self.create_signature_generator(audio)
+        audio = self.normalize_audio_data(audio)
         while True:
             signature = signature_generator.get_next_signature()
             if not signature:
                 break
-
             results = self.send_recognize_request(signature)
             current_offset = (
                 signature_generator.samples_processed / NORMALIZED_FRAME_RATE
@@ -61,8 +58,18 @@ class Shazam(object):
 
             yield current_offset, results
 
-    def normalize_audio_data(self, song_data: bytes) -> AudioSegment:
-        audio = AudioSegment.from_file(BytesIO(song_data))
+    def normalize_audio_data(
+        self, audio: Union[bytes, BinaryIO, AudioSegment],
+    ) -> AudioSegment:
+        """
+        Reads audio to pydub.AudioSegment (if it is not one already), then sets
+        sample width, frame rate and channels required by Shazam API.
+        """
+        if isinstance(audio, bytes):
+            audio = AudioSegment.from_file(BytesIO(audio))
+        elif not isinstance(audio, AudioSegment):
+            audio = AudioSegment.from_file(audio)
+
         audio = audio.set_sample_width(NORMALIZED_SAMPLE_WIDTH)
         audio = audio.set_frame_rate(NORMALIZED_FRAME_RATE)
         audio = audio.set_channels(NORMALIZED_CHANNELS)
@@ -71,6 +78,9 @@ class Shazam(object):
     def create_signature_generator(
         self, audio: AudioSegment,
     ) -> SignatureGenerator:
+        """
+        Creates a SignatureGenerator instance for given audio segment.
+        """
         signature_generator = SignatureGenerator()
         signature_generator.feed_input(audio.get_array_of_samples())
         signature_generator.MAX_TIME_SECONDS = self.max_time_seconds
