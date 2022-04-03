@@ -38,20 +38,23 @@ PARAMS: Final = types.MappingProxyType({
 
 
 class Shazam(object):
-    def __init__(self, song_data: bytes):
-        self.song_data = song_data
-        self.MAX_TIME_SECONDS = 8
+    max_time_seconds = 8
 
-    def recognize_song(self) -> Generator[Tuple[float, dict], None, None]:
-        self.audio = self.normalizate_audio_data(self.song_data)
-        signature_generator = self.create_signature_generator(self.audio)
+    def recognize_song(
+        self,
+        song_data: bytes,
+    ) -> Generator[Tuple[float, dict], None, None]:
+        audio = self.normalizate_audio_data(song_data)
+        signature_generator = self.create_signature_generator(audio)
         while True:
             signature = signature_generator.get_next_signature()
             if not signature:
                 break
 
             results = self.send_recognize_request(signature)
-            current_offset = signature_generator.samples_processed / 16000
+            current_offset = (
+                signature_generator.samples_processed / NORMALIZED_FRAME_RATE
+            )
 
             yield current_offset, results
 
@@ -60,7 +63,9 @@ class Shazam(object):
             'timezone': TIME_ZONE,
             'signature': {
                 'uri': sig.encode_to_uri(),
-                'samplems': int(sig.number_samples / sig.sample_rate_hz * 1000),
+                'samplems': int(
+                    sig.number_samples / sig.sample_rate_hz * 1000,
+                ),
             },
             'timestamp': int(time.time() * 1000),
             'context': {},
