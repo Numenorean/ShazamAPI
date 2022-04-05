@@ -9,20 +9,20 @@ authors = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.7"
 requests = "^2.27.1"
 pydub = "^0.25.1"
-numpy = "^1.22.3"
+numpy = "^1.21.1"
 
 [tool.poetry.dev-dependencies]
-pydub-stubs = "^0.25.1"
+pydub-stubs = { version = "^0.25.1", python = "^3.8" }
 mypy = "^0.942"
 wemake-python-styleguide = "^0.16.1"
 add-trailing-comma = "^2.2.2"
 isort = "^5.10.1"
 rope = "^0.23.0"
 autopep8 = "^1.6.0"
-ipython = "^8.2.0"
+ipython = { version = "^8.2.0", python = "^3.8" }
 flakeheaven = "^0.11.1"
 
 [tool.flakeheaven]
