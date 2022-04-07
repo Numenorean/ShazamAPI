@@ -5,7 +5,13 @@ from binascii import crc32
 from enum import IntEnum
 from io import BytesIO
 from math import exp, sqrt
-from typing import Dict, Final, List
+from typing import Dict, List
+
+try:
+    from typing import Final  # noqa: WPS433
+except ImportError:
+    from typing_extensions import Final  # noqa: WPS433, WPS440
+
 
 DATA_URI_PREFIX: Final = 'data:audio/vnd.shazam.sig;base64,'
 

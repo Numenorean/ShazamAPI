@@ -24,6 +24,7 @@ rope = "^0.23.0"
 autopep8 = "^1.6.0"
 ipython = { version = "^8.2.0", python = "^3.8" }
 flakeheaven = "^0.11.1"
+typing-extensions = { version = "^4.1.1", python = "< 3.8" }
 
 [tool.flakeheaven]
 base = [".flakeheaven.toml"]

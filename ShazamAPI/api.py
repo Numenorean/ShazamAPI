@@ -2,7 +2,12 @@ import time
 import types
 import uuid
 from io import BytesIO
-from typing import BinaryIO, Final, Generator, Tuple, Union
+from typing import BinaryIO, Generator, Tuple, Union
+
+try:
+    from typing import Final  # noqa: WPS433
+except ImportError:
+    from typing_extensions import Final  # noqa: WPS433, WPS440
 
 import requests
 from pydub import AudioSegment
@@ -49,7 +54,7 @@ class Shazam(object):
         self,
         lang: str = LANG,
         region: str = REGION,
-        timezone: str = TIMEZONE
+        timezone: str = TIMEZONE,
     ):
         self.lang = lang
         self.region = region
