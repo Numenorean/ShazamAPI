@@ -7,20 +7,20 @@ pip3 install ShazamAPI
 Also you need to install ffmpeg and ffprobe then add it to path
 
 ### Usage
+
 ```python
 from ShazamAPI import Shazam
 
-mp3_file_content_to_recognize = open('a.mp3', 'rb').read()
+with open('filename.mp3', 'rb') as fp:
+    mp3_file_content_to_recognize = fp.read()
 
-shazam = Shazam(
-    mp3_file_content_to_recognize,
-    lang='en',
-    time_zone='Europe/Paris'
-)
-recognize_generator = shazam.recognizeSong()
-while True:
-	print(next(recognize_generator)) # current offset & shazam response to recognize requests
+recognize_generator = Shazam().recognize_song(mp3_file_content_to_recognize)
+# or just:
+#     recognize_generator = Shazam().recognize_song('filename.mp3')
+for (offset, resp) in recognize_generator:
+    print(offset, resp)
 ```
 
 ### Credits to:
+
 https://github.com/marin-m/SongRec

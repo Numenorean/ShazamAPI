@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "ShazamAPI"
+version = "0.0.2"
+description = "Fully reverse engeenired Shazam API"
+authors = [
+    "Numenorean <41187266@users.noreply.github.com>",
+    "Alexander Pushkov <alexander@notpushk.in>",
+]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+requests = "^2.27.1"
+pydub = "^0.25.1"
+numpy = "^1.21.1"
+
+[tool.poetry.dev-dependencies]
+pydub-stubs = { version = "^0.25.1", python = "^3.8" }
+mypy = "^0.942"
+wemake-python-styleguide = "^0.16.1"
+add-trailing-comma = "^2.2.2"
+isort = "^5.10.1"
+rope = "^0.23.0"
+autopep8 = "^1.6.0"
+ipython = { version = "^8.2.0", python = "^3.8" }
+flakeheaven = "^0.11.1"
+typing-extensions = { version = "^4.1.1", python = "< 3.8" }
+
+[tool.flakeheaven]
+base = [".flakeheaven.toml"]
+
+[tool.mypy]
+plugins = "pydantic.mypy,sqlmypy"
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+use_parentheses = true
+
+[tool.pydocstyle]
+convention = "google"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

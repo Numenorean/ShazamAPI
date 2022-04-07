@@ -1,125 +1,138 @@
-from pydub import AudioSegment
-from io import BytesIO
-import requests
-import uuid
 import time
-import json
+import types
+import uuid
+from io import BytesIO
+from typing import BinaryIO, Generator, Tuple, Union
 
+try:
+    from typing import Final  # noqa: WPS433
+except ImportError:
+    from typing_extensions import Final  # noqa: WPS433, WPS440
+
+import requests
+from pydub import AudioSegment
 
 from .algorithm import SignatureGenerator
 from .signature_format import DecodedMessage
 
-LANG = 'ru'
-TIME_ZONE = 'Europe/Moscow'
+LANG: Final = 'ru'
+REGION: Final = 'RU'
+TIMEZONE: Final = 'Europe/Moscow'
+
+API_URL_TEMPLATE: Final = (
+    'https://amp.shazam.com/discovery/v5'
+    + '/{lang}/{region}/iphone/-/tag/{uuid_a}/{uuid_b}'
+)
+BASE_HEADERS: Final = types.MappingProxyType({
+    'X-Shazam-Platform': 'IPHONE',
+    'X-Shazam-AppVersion': '14.1.0',
+    'Accept': '*/*',
+    'Accept-Encoding': 'gzip, deflate',
+    'User-Agent': 'Shazam/3685 CFNetwork/1197 Darwin/20.0.0',
+})
+PARAMS: Final = types.MappingProxyType({
+    'sync': 'true',
+    'webv3': 'true',
+    'sampling': 'true',
+    'connected': '',
+    'shazamapiversion': 'v3',
+    'sharehub': 'true',
+    'hubv5minorversion': 'v5.1',
+    'hidelb': 'true',
+    'video': 'v3',
+})
+
+NORMALIZED_SAMPLE_WIDTH: Final = 2
+NORMALIZED_FRAME_RATE: Final = 16000
+NORMALIZED_CHANNELS: Final = 1
 
 
-class Endpoint:
-    SCHEME = 'https'
-    HOSTNAME = 'amp.shazam.com'
-
-    def __init__(
-        self,
-        lang: str,
-        time_zone: str
-    ) -> None:
-        self.lang = lang
-        self.time_zone = time_zone
-
-    @property
-    def url(self) -> str:
-        return (
-            f'{self.SCHEME}://{self.HOSTNAME}'
-            '/discovery/v5'
-            f'/{self.lang}/{self.lang.upper()}'
-            '/iphone/-/tag/{uuid_a}/{uuid_b}'
-        )
-
-    @property
-    def params(self) -> dict:
-        return {
-            'sync': 'true',
-            'webv3': 'true',
-            'sampling': 'true',
-            'connected': '',
-            'shazamapiversion': 'v3',
-            'sharehub': 'true',
-            'hubv5minorversion': 'v5.1',
-            'hidelb': 'true',
-            'video': 'v3'
-        }
-
-    @property
-    def headers(self) -> dict:
-        return {
-            "X-Shazam-Platform": "IPHONE",
-            "X-Shazam-AppVersion": "14.1.0",
-            "Accept": "*/*",
-            "Accept-Language": self.lang,
-            "Accept-Encoding": "gzip, deflate",
-            "User-Agent": "Shazam/3685 CFNetwork/1197 Darwin/20.0.0"
-        }
-
-
-class Shazam:
-    MAX_TIME_SECONDS = 8
+class Shazam(object):
+    max_time_seconds = 8
 
     def __init__(
         self,
-        songData: bytes,
         lang: str = LANG,
-        time_zone: str = TIME_ZONE
+        region: str = REGION,
+        timezone: str = TIMEZONE,
     ):
-        self.songData = songData
-        self._endpoint = Endpoint(lang, time_zone)
+        self.lang = lang
+        self.region = region
+        self.timezone = timezone
 
-    def recognizeSong(self) -> dict:
-        self.audio = self.normalizateAudioData(self.songData)
-        signatureGenerator = self.createSignatureGenerator(self.audio)
-        while True:
-        
-            signature = signatureGenerator.get_next_signature()
-            if not signature:
-                break
-            
-            results = self.sendRecognizeRequest(signature)
-            currentOffset = signatureGenerator.samples_processed / 16000
-            
-            yield currentOffset, results
-    
-    def sendRecognizeRequest(self, sig: DecodedMessage) -> dict:
-        data = {
-            'timezone': self._endpoint.time_zone,
-            'signature': {
-                'uri': sig.encode_to_uri(),
-                'samplems':int(sig.number_samples / sig.sample_rate_hz * 1000)
-                },
-            'timestamp': int(time.time() * 1000),
-            'context': {},
-            'geolocation': {}
-                }
-        r = requests.post(
-            self._endpoint.url.format(
-                uuid_a=str(uuid.uuid4()).upper(),
-                uuid_b=str(uuid.uuid4()).upper()
-            ),
-            params=self._endpoint.params,
-            headers=self._endpoint.headers,
-            json=data
-        )
-        return r.json()
-    
-    def normalizateAudioData(self, songData: bytes) -> AudioSegment:
-        audio = AudioSegment.from_file(BytesIO(songData))
-    
-        audio = audio.set_sample_width(2)
-        audio = audio.set_frame_rate(16000)
-        audio = audio.set_channels(1)
-        return audio
-    
-    def createSignatureGenerator(self, audio: AudioSegment) -> SignatureGenerator:
+    def recognize_song(
+        self, audio: Union[bytes, BinaryIO, AudioSegment],
+    ) -> Generator[Tuple[float, dict], None, None]:
+        audio = self.normalize_audio_data(audio)
+        signature_generator = self.create_signature_generator(audio)
+        for signature in signature_generator:
+            results = self.send_recognize_request(signature)
+            current_offset = int(
+                signature_generator.samples_processed // NORMALIZED_FRAME_RATE,
+            )
+
+            yield current_offset, results
+
+    def normalize_audio_data(
+        self, audio: Union[bytes, BinaryIO, AudioSegment],
+    ) -> AudioSegment:
+        """
+        Reads audio to pydub.AudioSegment (if it is not one already), then sets
+        sample width, frame rate and channels required by Shazam API.
+        """
+        if isinstance(audio, bytes):
+            audio = AudioSegment.from_file(BytesIO(audio))
+        elif not isinstance(audio, AudioSegment):
+            audio = AudioSegment.from_file(audio)
+
+        audio = audio.set_sample_width(NORMALIZED_SAMPLE_WIDTH)
+        audio = audio.set_frame_rate(NORMALIZED_FRAME_RATE)
+        audio = audio.set_channels(NORMALIZED_CHANNELS)
+        return audio  # noqa: WPS331
+
+    def create_signature_generator(
+        self, audio: AudioSegment,
+    ) -> SignatureGenerator:
+        """
+        Creates a SignatureGenerator instance for given audio segment.
+        """
         signature_generator = SignatureGenerator()
         signature_generator.feed_input(audio.get_array_of_samples())
-        signature_generator.MAX_TIME_SECONDS = self.MAX_TIME_SECONDS
+        signature_generator.MAX_TIME_SECONDS = self.max_time_seconds
+
+        # TODO: what 12, 3, 16, 6 mean here? :thinking:
         if audio.duration_seconds > 12 * 3:
-            signature_generator.samples_processed += 16000 * (int(audio.duration_seconds / 16) - 6)
+            signature_generator.samples_processed += NORMALIZED_FRAME_RATE * (
+                int(audio.duration_seconds / 16) - 6
+            )
+
         return signature_generator
+
+    def send_recognize_request(self, sig: DecodedMessage) -> dict:
+        data = {
+            'timezone': self.timezone,
+            'signature': {
+                'uri': sig.encode_to_uri(),
+                'samplems': int(
+                    sig.number_samples / sig.sample_rate_hz * 1000,
+                ),
+            },
+            'timestamp': int(time.time() * 1000),
+            'context': {},
+            'geolocation': {},
+        }
+        resp = requests.post(
+            API_URL_TEMPLATE.format(
+                lang=self.lang,
+                region=self.region,
+                uuid_a=str(uuid.uuid4()).upper(),
+                uuid_b=str(uuid.uuid4()).upper(),
+            ),
+            params=PARAMS,
+            headers={
+                **BASE_HEADERS,
+                'Accept-Language': self.lang,
+            },
+            json=data,
+        )
+        return resp.json()
